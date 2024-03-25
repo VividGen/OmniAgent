@@ -2,14 +2,13 @@ from datetime import datetime
 
 from sqlalchemy import desc
 from sqlalchemy.sql.operators import and_
+from toolz.curried import map, compose_left
 
 from omniagent.db.database import DBSession
 from omniagent.db.models import ChatHistory, ChatSession
+from omniagent.dto.chat_history import ChatHistory as ChatHistoryDto
 from omniagent.dto.chat_history import ChatMessage as ChatMessageDto
 from omniagent.dto.chat_history import ChatSession as ChatSessionDto
-from omniagent.dto.chat_history import ChatHistory as ChatHistoryDto
-from toolz.curried import map, compose_left
-
 from omniagent.dto.session import SessionTreeNodeDTOType, SessionTab
 
 

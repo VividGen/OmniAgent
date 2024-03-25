@@ -8,17 +8,17 @@ from toolz import memoize
 from omniagent.agent.cache import init_cache
 from omniagent.agent.postgres_history import PostgresChatMessageHistory
 from omniagent.agent.system_prompt import SYSTEM_PROMPT
+from omniagent.conf.env import settings
+from omniagent.experts.account_expert import AccountExpert
+from omniagent.experts.collection_expert import CollectionExpert
+from omniagent.experts.dapp_expert import DappExpert
+from omniagent.experts.executor_expert import ExecutorExpert
 from omniagent.experts.feed_expert import FeedExpert
 from omniagent.experts.google_expert import GoogleExpert
 from omniagent.experts.network_expert import NetworkExpert
-from omniagent.experts.collection_expert import CollectionExpert
-from omniagent.experts.token_expert import TokenExpert
-from omniagent.experts.dapp_expert import DappExpert
-from omniagent.experts.account_expert import AccountExpert
 from omniagent.experts.swap_expert import SwapExpert
+from omniagent.experts.token_expert import TokenExpert
 from omniagent.experts.transfer_expert import TransferExpert
-from omniagent.experts.executor_expert import ExecutorExpert
-from omniagent.conf.env import settings
 
 init_cache()
 

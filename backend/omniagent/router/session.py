@@ -11,11 +11,11 @@ from omniagent.dto.session import (
     SessionTreeNodeDTO,
     UpdateSessionDTO,
 )
-from omniagent.service.history import get_recent_sessions as get_recent_sessions0
 from omniagent.service.history import (
     get_histories,
     delete_histories,
 )
+from omniagent.service.history import get_recent_sessions as get_recent_sessions0
 from omniagent.service.session import (
     get_session_tree as get_session_tree0,
     create_session_folder as create_session_folder0,
