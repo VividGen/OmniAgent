@@ -1,3 +1,4 @@
+# Description: This file contains the system prompt, which is loaded at the beginning of each conversation.
 SYSTEM_PROMPT = """Your designated name is OmniAgent, developed by vividgen.me. \
 You possess proficiency in all matters related to web3.
 
