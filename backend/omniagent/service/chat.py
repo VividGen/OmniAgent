@@ -2,14 +2,13 @@ import asyncio
 import uuid
 from typing import AsyncIterable
 
-
 from sqlalchemy.exc import NoResultFound
 
 from omniagent.agent.ctx_var import resp_msg_id, chat_req_ctx
 from omniagent.agent.function_agent import get_agent
-from omniagent.agent.suggested_question import agen_suggested_questions
 from omniagent.agent.session_title import agen_session_title
 from omniagent.agent.stream_callback import StreamCallbackHandler
+from omniagent.agent.suggested_question import agen_suggested_questions
 from omniagent.db.database import DBSession
 from omniagent.db.models import ChatSession, ChatHistory
 from omniagent.dto.cb_content import CbContentType, CbContent
@@ -17,9 +16,7 @@ from omniagent.dto.chat_req import ChatReq
 from omniagent.dto.chat_resp import ChatResp, ChatRespType
 
 
-async def arun_agent(
-    req: ChatReq, stream_cb: StreamCallbackHandler, resp_msg_id0
-):
+async def arun_agent(req: ChatReq, stream_cb: StreamCallbackHandler, resp_msg_id0):
     agent = get_agent(req.session_id)
     resp_msg_id.set(resp_msg_id0)
     chat_req_ctx.set(req)
@@ -46,9 +43,7 @@ async def answer(req: ChatReq) -> AsyncIterable[str]:
 
     resp_msg_id0 = str(uuid.uuid4())
 
-    chat_task = asyncio.create_task(
-        arun_agent(req, stream_cb, resp_msg_id0)
-    )
+    chat_task = asyncio.create_task(arun_agent(req, stream_cb, resp_msg_id0))
 
     suggested_questions_task = asyncio.create_task(
         agen_suggested_questions(req.user_id, req.body)

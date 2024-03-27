@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
-from omniagent.router.onboarding import onboarding_router
 from omniagent.router.chat import chat_router
+from omniagent.router.onboarding import onboarding_router
 from omniagent.router.session import session_router
 from omniagent.router.task import task_router
 from omniagent.service.task import check_task_status

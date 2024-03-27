@@ -10,6 +10,7 @@ from loguru import logger
 from sqlalchemy.sql.operators import and_
 from starlette.websockets import WebSocket
 
+from omniagent.conf.env import settings
 from omniagent.db.database import DBSession
 from omniagent.db.models import Task
 from omniagent.dto.task import (
@@ -19,7 +20,6 @@ from omniagent.dto.task import (
     ConfirmTransferDTO,
 )
 from omniagent.experts import get_token_by_address
-from omniagent.conf.env import settings
 
 
 async def cancel_task(user_id: str, task_id: str):
