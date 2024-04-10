@@ -8,10 +8,10 @@ from toolz.curried import compose_left, map
 from omniagent.db.database import DBSession
 from omniagent.db.models import ChatSession
 from omniagent.dto.session import (
-    SessionTreeNodeDTOType,
-    SessionTreeNodeDTO,
-    build_session_tree_node,
     SessionTab,
+    SessionTreeNodeDTO,
+    SessionTreeNodeDTOType,
+    build_session_tree_node,
 )
 
 
