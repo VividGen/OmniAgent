@@ -1,6 +1,6 @@
-from langchain.agents import AgentExecutor, initialize_agent, AgentType
-from langchain.chat_models import ChatOpenAI, ChatOllama
-from langchain.memory import ConversationBufferMemory, ChatMessageHistory
+from langchain.agents import AgentExecutor, AgentType, initialize_agent
+from langchain.chat_models import ChatOllama, ChatOpenAI
+from langchain.memory import ChatMessageHistory, ConversationBufferMemory
 from langchain.prompts import MessagesPlaceholder
 from langchain.schema import SystemMessage
 from toolz import memoize
@@ -11,15 +11,11 @@ from omniagent.agent.system_prompt import SYSTEM_PROMPT, ollama_agent_kwargs
 from omniagent.conf.env import settings
 from omniagent.experts.account_expert import AccountExpert
 from omniagent.experts.collection_expert import CollectionExpert
-from omniagent.experts.dapp_expert import DappExpert
-from omniagent.experts.executor_expert import ExecutorExpert
 from omniagent.experts.feed_expert import FeedExpert
 from omniagent.experts.google_expert import GoogleExpert
-from omniagent.experts.network_expert import NetworkExpert
-from omniagent.experts.swap_expert import SwapExpert
-from omniagent.experts.token_expert import TokenExpert
-from omniagent.experts.transfer_expert import TransferExpert
 from omniagent.experts.hoot_expert import HootExpert
+from omniagent.experts.swap_expert import SwapExpert
+from omniagent.experts.transfer_expert import TransferExpert
 
 init_cache()
 
@@ -39,15 +35,11 @@ def get_agent(session_id: str) -> AgentExecutor:
     # load Experts as tools for the agent
     experts = [
         GoogleExpert(),
-        NetworkExpert(),
         FeedExpert(),
         CollectionExpert(),
-        TokenExpert(),
-        DappExpert(),
         AccountExpert(),
         SwapExpert(),
         TransferExpert(),
-        ExecutorExpert(),
         HootExpert(),
     ]
 
