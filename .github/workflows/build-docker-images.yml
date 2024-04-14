@@ -10,13 +10,19 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
         platform:
           - linux/amd64
           # - linux/arm64 # Cannot build frontend (install apk packages) within acceptable time
+        component:
+          - backend
+          - executor
+          - frontend
     steps:
       - name: Prepare
         run: |
@@ -37,15 +43,15 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: rss3/omniagent
+          images: rss3/omniagent-${{ matrix.component }}
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./${{ matrix.component }}
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=rss3/omniagent,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=rss3/omniagent-${{ matrix.component }},push-by-digest=true,name-canonical=true,push=true
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
@@ -54,13 +60,20 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ matrix.component }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
 
   merge:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - backend
+          - executor
+          - frontend
     permissions:
       contents: read
       packages: write
@@ -72,7 +85,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-${{ matrix.component }}-*
           merge-multiple: true
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -95,12 +108,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            rss3/omniagent
-            ghcr.io/${{ github.repository }}
+            rss3/omniagent-${{ matrix.component }}
+            ghcr.io/${{ github.repository }}-${{ matrix.component }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ matrix.arch }},enable={{is_default_branch}}
-            type=ref,event=tag
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
             type=ref,event=branch
             type=ref,event=pr
             type=sha,prefix={{branch}}-,enable=${{ !startsWith(github.ref, 'refs/tags') && github.event_name != 'pull_request' }},event=branch
@@ -112,8 +127,8 @@ jobs:
             ARGS="--dry-run"
           fi
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'rss3/omniagent@sha256:%s ' *) $ARGS
+            $(printf 'rss3/omniagent-${{ matrix.component }}@sha256:%s ' *) $ARGS
       - name: Inspect image
         if: github.event_name != 'pull_request'
         run: |
-          docker buildx imagetools inspect rss3/omniagent:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect rss3/omniagent-${{ matrix.component }}:${{ steps.meta.outputs.version }}
