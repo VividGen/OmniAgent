@@ -7,13 +7,16 @@ from toolz import memoize
 
 from omniagent.agent.cache import init_cache
 from omniagent.agent.postgres_history import PostgresChatMessageHistory
-from omniagent.agent.system_prompt import SYSTEM_PROMPT, ollama_agent_kwargs
+from omniagent.agent.system_prompt import (
+    SYSTEM_PROMPT,
+    ollama_agent_kwargs,
+)
 from omniagent.conf.env import settings
-from omniagent.experts.account_expert import AccountExpert
-from omniagent.experts.collection_expert import CollectionExpert
+from omniagent.experts.article_expert import ArticleExpert
 from omniagent.experts.feed_expert import FeedExpert
-from omniagent.experts.google_expert import GoogleExpert
-from omniagent.experts.hoot_expert import HootExpert
+from omniagent.experts.nft_expert import NFTExpert
+from omniagent.experts.price_expert import PriceExpert
+from omniagent.experts.search_expert import SearchExpert
 from omniagent.experts.swap_expert import SwapExpert
 from omniagent.experts.transfer_expert import TransferExpert
 
@@ -34,13 +37,13 @@ def get_agent(session_id: str) -> AgentExecutor:
     )
     # load Experts as tools for the agent
     experts = [
-        GoogleExpert(),
+        SearchExpert(),
         FeedExpert(),
-        CollectionExpert(),
-        AccountExpert(),
+        PriceExpert(),
+        ArticleExpert(),
+        NFTExpert(),
         SwapExpert(),
         TransferExpert(),
-        HootExpert(),
     ]
 
     if settings.MODEL_NAME.startswith("gpt"):
