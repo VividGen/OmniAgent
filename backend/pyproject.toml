@@ -106,6 +106,7 @@ select = [
 "omniagent/dto/task.py"=["N815"]
 "omniagent/experts/__init__.py"=["SIM117"]
 "omniagent/experts/swap_expert.py"=["SIM117"]
+"omniagent/db/models.py"=["N815"]
 
 
 [tool.ruff.format]
