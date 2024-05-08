@@ -14,7 +14,7 @@ from omniagent.agent.function_agent import get_agent
 from omniagent.conf.env import settings
 
 # Set up the data layer
-cl_data._data_layer = SQLAlchemyDataLayer(conninfo=settings.VEC_DB_CONNECTION)
+cl_data._data_layer = SQLAlchemyDataLayer(conninfo=settings.DB_CONNECTION)
 
 
 def setup_runnable():
