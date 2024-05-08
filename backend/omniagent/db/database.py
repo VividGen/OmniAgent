@@ -5,7 +5,7 @@ from sqlalchemy_utils import create_database, database_exists
 from omniagent.conf.env import settings
 from omniagent.db.models import Base, User
 
-url = settings.BIZ_DB_CONNECTION
+url = settings.DB_CONNECTION
 
 if not database_exists(url):
     create_database(url)
