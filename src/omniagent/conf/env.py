@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     DB_CONNECTION: str = Field(..., env="DB_CONNECTION")
     RSS3_DATA_API: str = Field(default="https://testnet.vividgen.me/data", env="RSS3_DATA_API")
     RSS3_SEARCH_API: str = Field(default="https://devnet.vividgen.me/search", env="RSS3_SEARCH_API")
-    WIDGET_URL: str = Field(default="http://localhost:8001", env="WIDGET_URL")
 
 
 settings = Settings()
