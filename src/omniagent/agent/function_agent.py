@@ -26,6 +26,7 @@ from omniagent.experts.feed_expert import FeedExpert
 from omniagent.experts.nft_expert import NFTExpert
 from omniagent.experts.price_expert import PriceExpert
 from omniagent.experts.search_expert import SearchExpert
+from omniagent.experts.swap_expert import SwapExpert
 from omniagent.experts.transfer_expert import TransferExpert
 
 # Initialize cache
@@ -52,6 +53,7 @@ def create_react_agent(session_id: str):
         ArticleExpert(),
         NFTExpert(),
         TransferExpert(),
+        SwapExpert()
     ]
 
     # Initialize interpreter
@@ -123,6 +125,7 @@ def create_tool_call_agent(session_id: str):
         ArticleExpert(),
         NFTExpert(),
         TransferExpert(),
+        SwapExpert()
     ]
 
     # Construct the Tools agent
