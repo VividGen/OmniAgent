@@ -25,6 +25,8 @@ app.add_middleware(
 async def health_check():
     return JSONResponse(content={"status": "ok"})
 
+
+
 @app.get("/widget/swap")
 async def swap_root():
     print("swap_root")
