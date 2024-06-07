@@ -3,26 +3,30 @@ from typing import Dict, Optional
 
 import chainlit as cl
 import chainlit.data as cl_data
-from chainlit.cli import run_chainlit
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from langchain.memory import ConversationBufferMemory
 from langchain.schema.runnable.config import RunnableConfig
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import FunctionMessage
+from langchain_core.utils.json import parse_json_markdown
 from loguru import logger
 
+from omniagent.agent.function_agent import get_agent
 from omniagent.conf.env import settings
-from omniagent.conf.llm_provider import get_available_providers, set_current_llm
-from omniagent.ui.profile import profile_name_to_provider_key, provider_to_profile
-from omniagent.workflows.member import members
-from omniagent.workflows.workflow import build_workflow
 
-# Set up the data layer
-cl_data._data_layer = SQLAlchemyDataLayer(conninfo=settings.DB_CONNECTION)
+
+def enable_auth():
+    auth_settings = [settings.CHAINLIT_AUTH_SECRET, settings.OAUTH_AUTH0_CLIENT_ID, settings.OAUTH_AUTH0_CLIENT_SECRET, settings.OAUTH_AUTH0_DOMAIN]
+    return all(arg is not None for arg in auth_settings)
+
+
+if enable_auth():
+    # Set up the data layer
+    cl_data._data_layer = SQLAlchemyDataLayer(conninfo=settings.DB_CONNECTION)
 
 
 def setup_runnable():
     """Set up the runnable agent."""
-    agent = build_workflow()
+    agent = get_agent("")
     cl.user_session.set("runnable", agent)
 
 
@@ -31,57 +35,68 @@ def initialize_memory() -> ConversationBufferMemory:
     return ConversationBufferMemory(return_messages=True)
 
 
-@cl.oauth_callback
-def oauth_callback(
-    provider_id: str,
-    token: str,
-    raw_user_data: Dict[str, str],
-    default_user: cl.User,
-) -> Optional[cl.User]:
-    """OAuth callback function."""
-    return default_user
+if enable_auth():
 
-
-@cl.set_chat_profiles
-async def chat_profile():
-    providers = get_available_providers()
-    profiles = list(map(provider_to_profile, providers.keys()))
-    profiles = [profile for profile in profiles if profile is not None]
-
-    return profiles
+    @cl.oauth_callback
+    def oauth_callback(
+        provider_id: str,
+        token: str,
+        raw_user_data: Dict[str, str],
+        default_user: cl.User,
+    ) -> Optional[cl.User]:
+        """OAuth callback function."""
+        return default_user
 
 
 @cl.on_chat_start
 async def on_chat_start():
     """Callback function when chat starts."""
     cl.user_session.set("memory", initialize_memory())
-    profile = cl.user_session.get("chat_profile")
-    provider_key = profile_name_to_provider_key(profile)
-    set_current_llm(provider_key)
     setup_runnable()
-    await cl.Message(content=f"starting chat using the {profile} chat profile").send()
 
 
-@cl.on_chat_resume
-async def on_chat_resume(thread: cl_data.ThreadDict):
-    """Callback function when chat resumes."""
-    memory = initialize_memory()
-    root_messages = [m for m in thread["steps"]]
-    for message in root_messages:
-        if message["type"] == "user_message":
-            memory.chat_memory.add_user_message(message["output"])
-        else:
-            memory.chat_memory.add_ai_message(message["output"])
+if enable_auth():
 
-    cl.user_session.set("memory", memory)
-    profile = cl.user_session.get("chat_profile")
-    provider_key = profile_name_to_provider_key(profile)
-    set_current_llm(provider_key)
-    setup_runnable()
+    @cl.on_chat_resume
+    async def on_chat_resume(thread: cl_data.ThreadDict):
+        """Callback function when chat resumes."""
+        memory = initialize_memory()
+        root_messages = [m for m in thread["steps"]]
+        for message in root_messages:
+            if message["type"] == "user_message":
+                memory.chat_memory.add_user_message(message["output"])
+            else:
+                memory.chat_memory.add_ai_message(message["output"])
+
+        cl.user_session.set("memory", memory)
+        setup_runnable()
 
 
 def build_token(token_symbol: str, token_address: str):
     return f"{token_symbol}{'--' + token_address.lower() if token_symbol != 'ETH' else ''}"
+
+
+async def handle_function_message(message: FunctionMessage, msg: cl.Message):
+    """Handle FunctionMessage type of messages."""
+    if message.name == "swap":
+        swap_dict = json.loads(message.content)
+        await do_stream_swap_widget(msg, swap_dict)
+
+
+async def do_stream_swap_widget(msg, swap_dict):
+    from_chain = swap_dict["from_chain_name"]
+    to_chain = swap_dict["to_chain_name"]
+    from_token_ = swap_dict["from_token"]
+    from_token_address = swap_dict["from_token_address"]
+    to_token = swap_dict["to_token"]
+    to_token_address = swap_dict["to_token_address"]
+    from_amount = swap_dict["amount"]
+    widget = (
+        f"""<iframe style="swap" src="https://widget.rango.exchange/?fromBlockchain={from_chain}&"""
+        f"""fromToken={build_token(from_token_, from_token_address)}&toBlockchain={to_chain}&"""
+        f"""toToken={build_token(to_token, to_token_address)}&fromAmount={from_amount}" width="400" height="700"></iframe>"""
+    )
+    await msg.stream_token(widget)
 
 
 @cl.on_message
@@ -90,58 +105,32 @@ async def on_message(message: cl.Message):
     memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
     runnable = cl.user_session.get("runnable")
 
-    profile = cl.user_session.get("chat_profile")
-    provider_key = profile_name_to_provider_key(profile)
-    set_current_llm(provider_key)
-
     msg = cl.Message(content="")
-    agent_names = [member["name"] for member in members]
 
-    # try:
-    async for event in runnable.astream_events(
-        {"messages": [HumanMessage(content=message.content)]},
-        config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler(stream_final_answer=True)]),
-        version="v1",
-    ):
-        kind = event["event"]
-        if kind == "on_tool_end":
-            await handle_tool_end(event, msg)
-        elif kind == "on_chat_model_stream":  # noqa
-            if event["metadata"]["langgraph_node"] in agent_names:
-                content = event["data"]["chunk"].content
-                if content:
-                    await msg.stream_token(content)
+    try:
+        async for chunk in runnable.astream(
+            {"input": message.content}, config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler(stream_final_answer=True)])
+        ):
+            if "output" in chunk:
+                await msg.stream_token(chunk["output"])
+            elif "messages" in chunk:
+                for message in chunk["messages"]:
+                    if isinstance(message, FunctionMessage):
+                        await handle_function_message(message, msg)
+                    else:
+                        await react_tool_call_handle(message, msg)
+    except Exception as e:
+        logger.exception(e)
 
     await msg.send()
     memory.chat_memory.add_user_message(message.content)
     memory.chat_memory.add_ai_message(msg.content)
 
 
-async def handle_tool_end(event, msg):
-    if event["name"] == "swap":
-        output = event["data"]["output"]
-        swap_dict = json.loads(output)
-        logger.info(swap_dict)
-        from_chain = swap_dict["from_chain_name"]
-        to_chain = swap_dict["to_chain_name"]
-        from_token_ = swap_dict["from_token"]
-        from_token_address = swap_dict["from_token_address"]
-        to_token = swap_dict["to_token"]
-        to_token_address = swap_dict["to_token_address"]
-        from_amount = swap_dict["amount"]
-
-        widget = (
-            f"""<iframe style="swap" src="https://widget.rango.exchange/?fromBlockchain={from_chain}&"""
-            f"""fromToken={build_token(from_token_, from_token_address)}&toBlockchain={to_chain}&"""
-            f"""toToken={build_token(to_token, to_token_address)}&fromAmount={from_amount}"
-             width="400" height="700"></iframe>"""
-        )
-        await msg.stream_token(widget)
-
-
-def start_ui():
-    run_chainlit(__file__)
-
-
-if __name__ == "__main__":
-    start_ui()
+async def react_tool_call_handle(message, msg):
+    try:
+        swap_dict = parse_json_markdown(message.content)
+        if "type" in swap_dict and swap_dict["type"] == "swap":
+            await do_stream_swap_widget(msg, swap_dict)
+    except Exception as e:
+        logger.warning("Failed to handle react tool call message", e)

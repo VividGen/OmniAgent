@@ -7,18 +7,8 @@ from langchain.callbacks.manager import (
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from omniagent.dto.mutation import Transfer
 from omniagent.experts.token_util import chain_name_to_id, get_token_data_by_key, select_best_token
-
-
-class Transfer(BaseModel):
-    # task_id: str
-    to_address: str
-    token: str
-    token_address: str
-    chain_id: str
-    amount: str
-    logoURI: str  # noqa
-    decimals: int
 
 
 class ParamSchema(BaseModel):
