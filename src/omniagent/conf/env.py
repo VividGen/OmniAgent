@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from pydantic import Field
@@ -8,12 +8,22 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
-    MODEL_NAME: str = Field(default="gemini-1.5-pro", env="MODEL_NAME")
-    LLM_API_BASE: Optional[str] = Field(default=None)
-    GOOGLE_CLOUD_PROJECT_ID: Optional[str] = Field(default=None)
-    GOOGLE_GEMINI_API_KEY: Optional[str] = Field(default=None)
-    NFTSCAN_API_KEY: str = Field(..., env="NFTSCAN_API_KEY")
     DB_CONNECTION: str = Field(..., env="DB_CONNECTION")
+
+    # Online LLM API KEY
+    VERTEX_PROJECT_ID: Optional[str] = Field(default=None, description="Google cloud vertex project id (optional)")
+    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY", description="OpenAI API Key (optional)")
+    # Local LLM configuration
+    OLLAMA_MODEL: Optional[List[str]] = Field(default=None, env="OLLAMA_MODEL", description="OLLAMA Model list (optional)")
+    OLLAMA_MODEL_URL: Optional[str] = Field(default=None, env="OLLAMA_MODEL_URL", description="OLLAMA Model URL (optional)")
+
+
+    GOOGLE_GEMINI_API_KEY: Optional[str] = Field(default=None)
+
+    NFTSCAN_API_KEY: Optional[str] = Field(..., env="NFTSCAN_API_KEY", description="NFTScan API Key (optional)")
+    COVALENT_API_KEY: Optional[str] = Field(..., env="COVALENT_API_KEY")
+    ROOTDATA_API_KEY: Optional[str] = Field(..., env="ROOTDATA_API_KEY")
+    COINGECKO_API_KEY: Optional[str] = Field(..., env="COINGECKO_API_KEY")
     RSS3_DATA_API: str = Field(default="https://gi.vividgen.me", env="RSS3_DATA_API")
     RSS3_SEARCH_API: str = Field(default="https://devnet.vividgen.me/search", env="RSS3_SEARCH_API")
 
