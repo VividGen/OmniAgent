@@ -26,19 +26,16 @@ def build_workflow():
     from omniagent.agents.fallback import fallback
     from omniagent.agents.market_analysis import market_analysis_agent
     from omniagent.agents.project_management import research_analyst_agent
-    from omniagent.agents.social_track import social_track_agent
     from omniagent.workflows.member import members
     from omniagent.workflows.supervisor_chain import supervisor_chain
 
     market_analysis_agent_node = create_node(market_analysis_agent, "market_analysis_agent")
-    social_track_agent_node = create_node(social_track_agent, "social_track_agent")
     asset_management_agent_node = create_node(asset_management_agent, "asset_management_agent")
     block_explorer_agent_node = create_node(block_explorer_agent, "block_explorer_agent")
     research_analyst_agent_node = create_node(research_analyst_agent, "research_analyst_agent")
 
     workflow = StateGraph(AgentState)
     workflow.add_node("market_analysis_agent", market_analysis_agent_node)
-    workflow.add_node("social_track_agent", social_track_agent_node)
     workflow.add_node("asset_management_agent", asset_management_agent_node)
     workflow.add_node("block_explorer_agent", block_explorer_agent_node)
     workflow.add_node("research_analyst_agent", research_analyst_agent_node)
