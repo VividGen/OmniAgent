@@ -1,102 +1,85 @@
-import pytest
+import asyncio
+import unittest
+
 from langchain_core.messages import HumanMessage
-from loguru import logger
 
-from omniagent.agents.market_analysis import build_market_analysis_agent
-from omniagent.conf.llm_provider import get_available_providers
-
-
-@pytest.fixture(scope="module")
-def market_analysis_agent(request):
-    model = request.config.getoption("--model")
-    logger.info(f"using model: {model}")
-
-    llm = get_available_providers()[model]
-    agent = build_market_analysis_agent(llm)
-    return agent
+from omniagent.agents.market_analysis import market_analysis_agent
+from omniagent.conf.llm_provider import set_current_llm
 
 
-@pytest.mark.asyncio
-async def test_query_btc_price(market_analysis_agent):
-    events = market_analysis_agent.astream_events({"messages": [HumanMessage(content="What's BTC price now?", name="human")]}, version="v1")
+class TestMarketAnalysisAgent(unittest.TestCase):
+    def setUp(self):
+        # set_current_llm("gemini-1.5-pro")
+        set_current_llm("gpt-3.5-turbo")
+        # set_current_llm("llama3.1:latest")
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            event_data_input_ = event["data"]["input"]
-            assert event["name"] == "PriceExecutor"
-            assert event_data_input_["token"] == "BTC"
+    def test_query_btc_price(self):
+        async def async_test():
+            events = market_analysis_agent.astream_events({"messages": [HumanMessage(content="What's BTC price now?", name="human")]}, version="v1")
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "PriceExecutor")
+                    self.assertEqual(event_data_input_["token"], "BTC")
 
+        asyncio.run(async_test())
 
-@pytest.mark.asyncio
-async def test_query_eth_price(market_analysis_agent):
-    events = market_analysis_agent.astream_events(
-        {"messages": [HumanMessage(content="What's the current price of Ethereum?", name="human")]}, version="v1"
-    )
+    def test_query_eth_price(self):
+        async def async_test():
+            events = market_analysis_agent.astream_events(
+                {"messages": [HumanMessage(content="What's the current price of Ethereum?", name="human")]}, version="v1"
+            )
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            event_data_input_ = event["data"]["input"]
-            assert event["name"] == "PriceExecutor"
-            assert event_data_input_["token"] == "ETH"
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "PriceExecutor")
+                    self.assertEqual(event_data_input_["token"], "ETH")
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+        asyncio.run(async_test())
 
+    def test_query_funding_rate(self):
+        async def async_test():
+            events = market_analysis_agent.astream_events(
+                {"messages": [HumanMessage(content="What's the funding rate for BTC/USDT in binance?", name="human")]}, version="v1"
+            )
 
-@pytest.mark.asyncio
-async def test_query_funding_rate(market_analysis_agent):
-    events = market_analysis_agent.astream_events(
-        {"messages": [HumanMessage(content="What's the funding rate for BTC in binance?", name="human")]}, version="v1"
-    )
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "FundingRateExecutor")
+                    self.assertEqual(event_data_input_["exchange"], "binance")
+                    self.assertEqual(event_data_input_["symbol"], "BTC/USDT")
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            event_data_input_ = event["data"]["input"]
-            assert event["name"] == "FundingRateExecutor"
-            assert event_data_input_["exchange"] == "binance"
-            assert event_data_input_["symbol"] == "BTC/USDT"
+        asyncio.run(async_test())
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+    def test_query_nft_ranking(self):
+        async def async_test():
+            events = market_analysis_agent.astream_events(
+                {"messages": [HumanMessage(content="What are the top 5 NFT collections?", name="human")]}, version="v1"
+            )
 
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    self.assertEqual(event["name"], "NFTRankingExecutor")
 
-@pytest.mark.asyncio
-async def test_query_nft_ranking(market_analysis_agent):
-    events = market_analysis_agent.astream_events(
-        {"messages": [HumanMessage(content="What are the top 5 NFT collections?", name="human")]}, version="v1"
-    )
+        asyncio.run(async_test())
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            assert event["name"] == "NFTRankingExecutor"
+    def test_query_coin_market(self):
+        async def async_test():
+            events = market_analysis_agent.astream_events(
+                {"messages": [HumanMessage(content="Give me the market cap for Bitcoin", name="human")]}, version="v1"
+            )
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "CoinMarketExecutor")
+                    self.assertEqual(event_data_input_["order"], "market_cap_desc")
 
-
-@pytest.mark.asyncio
-async def test_query_coin_market(market_analysis_agent):
-    events = market_analysis_agent.astream_events(
-        {"messages": [HumanMessage(content="Give me the market cap for Bitcoin", name="human")]}, version="v1"
-    )
-
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            event_data_input_ = event["data"]["input"]
-            assert event["name"] == "CoinMarketExecutor"
-            assert event_data_input_["order"] == "market_cap_desc"
-
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+        asyncio.run(async_test())
 
 
 if __name__ == "__main__":
-    pytest.main()
+    unittest.main()

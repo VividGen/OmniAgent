@@ -7,16 +7,17 @@ COPY widget ./
 RUN yarn run build
 
 # Python stage
-FROM python:3.11.5-slim-bullseye
+FROM python:3.11-slim-buster
 
 WORKDIR /app
 
-COPY . .
+COPY pyproject.toml /app
 ENV PYTHONPATH=${PYTHONPATH}:${PWD}
 RUN pip3 install poetry
 RUN poetry config virtualenvs.create false
-RUN poetry install
+RUN poetry install --no-dev
 
 COPY --from=builder /app/dist /app/dist
 
+COPY . .
 CMD ["python", "main.py"]

@@ -2,10 +2,10 @@ from dotenv import load_dotenv
 from langchain_core.output_parsers import JsonOutputToolsParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai import ChatVertexAI
 from loguru import logger
 
+from omniagent.conf.llm_provider import get_current_llm
 from omniagent.workflows.member import AgentRole, members
 
 load_dotenv()
@@ -17,7 +17,7 @@ def route(next_: AgentRole):
     pass
 
 
-def build_supervisor_chain(llm):
+def build_supervisor_chain():
     system_prompt = """
 You are an AI Agent Supervisor coordinating specialized AI Agents. Your task:
 
@@ -44,6 +44,7 @@ Based on these guidelines, select the next AI Agent or end the conversation.
             MessagesPlaceholder(variable_name="messages"),
         ]
     ).partial(options=str(options), members=", ".join([member["name"] for member in members]))
+    llm = get_current_llm()
 
     def extract_next(x):
         try:
@@ -53,13 +54,5 @@ Based on these guidelines, select the next AI Agent or end the conversation.
             next__ = "fallback_agent"
         return {"next": next__}
 
-    def get_tool_choice(llm):
-        if isinstance(llm, ChatVertexAI) and llm.model_name == "gemini-1.5-flash":
-            return None
-        if isinstance(llm, ChatGoogleGenerativeAI):
-            return None
-        return "route"
-
-    tool_choice = get_tool_choice(llm)
-
+    tool_choice = None if (isinstance(llm, ChatVertexAI) and llm.model_name == "gemini-1.5-flash") else "route"
     return prompt | llm.bind_tools(tools=[route], tool_choice=tool_choice) | JsonOutputToolsParser() | extract_next

@@ -1,41 +1,26 @@
 import React from 'react';
 import '@rainbow-me/rainbowkit/styles.css';
-import {RainbowKitProvider, getDefaultConfig, getDefaultWallets} from '@rainbow-me/rainbowkit';
-import {createConfig, http, WagmiProvider} from 'wagmi';
+import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {mainnet, sepolia} from 'wagmi/chains';
-
-let MAINNET_RPC_URL = process.env.REACT_APP_MAINNET_RPC_URL || "";
-let SEPOLIA_RPC_URL = process.env.REACT_APP_SEPOLIA_RPC_URL || "";
+import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains';
 
 /* eslint-disable no-console */
+
 export function App() {
+
   return <>
+  <h1>hello world</h1>
   </>
 }
 
-const { connectors } = getDefaultWallets({
-  appName: "OmniAgent Widget",
-  appDescription: "Widget",
-  projectId: "project id",
-})
-
-export const wagmiConfig = createConfig({
-  chains:[mainnet,sepolia],
-  connectors,
+// Configuration for RainbowKit
+const config = getDefaultConfig({
+  appName: 'My RainbowKit App',
+  projectId: 'No_ID',
+    chains: [mainnet, polygon, optimism, arbitrum],
   ssr: true,
-  transports: {
-    [mainnet.id]: http(MAINNET_RPC_URL, { batch: true }),
-    [sepolia.id]: http(SEPOLIA_RPC_URL, { batch: true }),
-  },
-  syncConnectedChain: true,
-})
-
-declare module "wagmi" {
-  interface Register {
-    config: typeof wagmiConfig
-  }
-}
+});
 
 // Create a new QueryClient instance for React Query
 const queryClient = new QueryClient();
@@ -49,7 +34,7 @@ const queryClient = new QueryClient();
  */
 export function TransferWidgetApp({ children }: { children: React.ReactNode }) {
   return (
-      <WagmiProvider config={wagmiConfig}>
+      <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
           {children}

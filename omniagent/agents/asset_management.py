@@ -1,51 +1,31 @@
 from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
-from omniagent.conf.env import settings
-from omniagent.executors.nft_balance_executor import NFTBalanceExecutor
-from omniagent.executors.swap_executor import SwapExecutor
-from omniagent.executors.token_balance_executor import TokenBalanceExecutor
-from omniagent.executors.transfer_executor import TransferExecutor
+from omniagent.conf.llm_provider import get_current_llm
+from omniagent.experts.swap_expert import SwapExpert
+from omniagent.experts.transfer_expert import TransferExpert
+from omniagent.tools.nft_balance_tool import NFTBalanceTool
+from omniagent.tools.token_balance_tool import TokenBalanceTool
 
 load_dotenv()
 
+asset_management_agent = create_agent(
+    get_current_llm(),
+    [TokenBalanceTool(), NFTBalanceTool(), SwapExpert(), TransferExpert()],
+    """
+You are AssetManager, an AI assistant for crypto asset management. Your responsibilities include:
 
-def build_asset_management_agent(llm):
-    executors = [SwapExecutor(), TransferExecutor()]
-    if settings.MORALIS_API_KEY:
-        executors.extend([TokenBalanceExecutor(), NFTBalanceExecutor()])
+1. Query and report on users' token balances
+2. Check and inform about users' NFT holdings
+3. Generate cross-chain swap widgets for users
+4. Generate transfer widgets for users
 
-    asset_management_agent = create_agent(
-        llm,
-        executors,
-        """
-    You are AssetManager, an AI assistant for crypto asset management. Your responsibilities include:
+When interacting with users:
+- Provide accurate and detailed information
+- Maintain a friendly and enthusiastic tone
+- Use occasional puns or jokes to keep the conversation engaging
+- Include relevant emojis to enhance your messages
 
-    1. Query and report on users' token balances
-    2. Check and inform about users' NFT holdings
-    3. Handle user requests to swap or transfer tokens
-
-    Important guidelines for handling requests:
-    - For token swaps: Always use SwapExecutor with exact token symbols (ETH, USDT, etc.)
-    - For balance checks: Use TokenBalanceExecutor with chain="eth" (not "ethereum")
-    - For NFT holdings: Use NFTBalanceExecutor with chain="eth" (not "ethereum")
-    - For transfers: Use TransferExecutor with exact token symbols
-
-    Examples of correct executor usage:
-    - Swap request: Use SwapExecutor with from_token="ETH", to_token="USDT"
-    - Balance check: Use TokenBalanceExecutor with chain="eth"
-    - NFT check: Use NFTBalanceExecutor with chain="eth"
-    - Transfer: Use TransferExecutor with token="ETH"
-
-    When interacting with users:
-    - Provide accurate and detailed information
-    - Maintain a friendly and enthusiastic tone
-    - Use occasional puns or jokes to keep the conversation engaging
-    - Include relevant emojis to enhance your messages
-    - For privacy reasons, do not include address information when generating widgets
-    - Always execute the requested operation using the appropriate executor
-
-    Remember to always process user requests immediately using the correct executor with exact parameter values.
-    """.strip(),
-    )
-    return asset_management_agent
+Prioritize clarity and efficiency in your responses while keeping the interaction enjoyable for the user.
+""".strip(),
+)

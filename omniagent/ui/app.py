@@ -6,69 +6,39 @@ import chainlit.data as cl_data
 from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from langchain.memory import ConversationBufferMemory
 from langchain.schema.runnable.config import RunnableConfig
-from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
-from langchain_ollama import ChatOllama
 from loguru import logger
 
 from omniagent.conf.env import settings
-from omniagent.conf.llm_provider import SUPPORTED_OLLAMA_MODELS, get_available_providers
+from omniagent.conf.llm_provider import get_available_providers, set_current_llm
 from omniagent.ui.profile import profile_name_to_provider_key, provider_to_profile
 from omniagent.workflows.member import members
 from omniagent.workflows.workflow import build_workflow
 
-
-def enable_auth():
-    auth_settings = [
-        settings.CHAINLIT_AUTH_SECRET,
-        settings.OAUTH_AUTH0_CLIENT_ID,
-        settings.OAUTH_AUTH0_CLIENT_SECRET,
-        settings.OAUTH_AUTH0_DOMAIN,
-    ]
-    return all(arg for arg in auth_settings)
+# Set up the data layer
+cl_data._data_layer = SQLAlchemyDataLayer(conninfo=settings.DB_CONNECTION)
 
 
-if enable_auth():
-    # Set up the data layer
-    cl_data._data_layer = SQLAlchemyDataLayer(conninfo=settings.DB_CONNECTION)
-
-    @cl.oauth_callback
-    def oauth_callback(
-        provider_id: str,
-        token: str,
-        raw_user_data: Dict[str, str],
-        default_user: cl.User,
-    ) -> Optional[cl.User]:
-        """OAuth callback function."""
-        return default_user
-
-    @cl.on_chat_resume
-    async def on_chat_resume(thread: cl_data.ThreadDict):
-        """Callback function when chat resumes."""
-        memory = initialize_memory()
-        root_messages = [m for m in thread["steps"]]
-        for message in root_messages:
-            if message["type"] == "user_message":
-                memory.chat_memory.add_user_message(message["output"])
-            else:
-                memory.chat_memory.add_ai_message(message["output"])
-
-        cl.user_session.set("memory", memory)
-        profile = cl.user_session.get("chat_profile")
-        provider_key = profile_name_to_provider_key(profile)
-        llm = get_available_providers()[provider_key]
-        setup_runnable(llm)
-
-
-def setup_runnable(llm: BaseChatModel):
+def setup_runnable():
     """Set up the runnable agent."""
-    agent = build_workflow(llm)
+    agent = build_workflow()
     cl.user_session.set("runnable", agent)
 
 
 def initialize_memory() -> ConversationBufferMemory:
     """Initialize conversation memory."""
     return ConversationBufferMemory(return_messages=True)
+
+
+@cl.oauth_callback
+def oauth_callback(
+    provider_id: str,
+    token: str,
+    raw_user_data: Dict[str, str],
+    default_user: cl.User,
+) -> Optional[cl.User]:
+    """OAuth callback function."""
+    return default_user
 
 
 @cl.set_chat_profiles
@@ -86,8 +56,27 @@ async def on_chat_start():
     cl.user_session.set("memory", initialize_memory())
     profile = cl.user_session.get("chat_profile")
     provider_key = profile_name_to_provider_key(profile)
-    llm = get_available_providers()[provider_key]
-    setup_runnable(llm)
+    set_current_llm(provider_key)
+    setup_runnable()
+    await cl.Message(content=f"starting chat using the {profile} chat profile").send()
+
+
+@cl.on_chat_resume
+async def on_chat_resume(thread: cl_data.ThreadDict):
+    """Callback function when chat resumes."""
+    memory = initialize_memory()
+    root_messages = [m for m in thread["steps"]]
+    for message in root_messages:
+        if message["type"] == "user_message":
+            memory.chat_memory.add_user_message(message["output"])
+        else:
+            memory.chat_memory.add_ai_message(message["output"])
+
+    cl.user_session.set("memory", memory)
+    profile = cl.user_session.get("chat_profile")
+    provider_key = profile_name_to_provider_key(profile)
+    set_current_llm(provider_key)
+    setup_runnable()
 
 
 def build_token(token_symbol: str, token_address: str):
@@ -95,55 +84,32 @@ def build_token(token_symbol: str, token_address: str):
 
 
 @cl.on_message
-async def on_message(message: cl.Message):  # noqa
+async def on_message(message: cl.Message):
     """Callback function to handle user messages."""
     memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+    runnable = cl.user_session.get("runnable")
 
     profile = cl.user_session.get("chat_profile")
     provider_key = profile_name_to_provider_key(profile)
-    llm = get_available_providers()[provider_key]
-
-    setup_runnable(llm)
-    runnable = cl.user_session.get("runnable")
+    set_current_llm(provider_key)
 
     msg = cl.Message(content="")
     agent_names = [member["name"] for member in members]
 
-    if hasattr(llm, "model") and isinstance(llm,ChatOllama):
-        model_name = llm.model
-        supports_tools = SUPPORTED_OLLAMA_MODELS.get(model_name, {}).get("supports_tools", False)
-    else:
-        supports_tools = True
-
-    if supports_tools:
-        async for event in runnable.astream_events(
-            {"messages": [*memory.chat_memory.messages, HumanMessage(content=message.content)]},
-            config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler(stream_final_answer=True)]),
-            version="v1",
-        ):
-            kind = event["event"]
-            if kind == "on_tool_end":
-                await handle_tool_end(event, msg)
-            elif kind == "on_chat_model_stream":  # noqa
-                if event["metadata"]["langgraph_node"] in agent_names:
-                    content = event["data"]["chunk"].content
-                    if content:
-                        if isinstance(event["data"]["chunk"].content ,list):
-                            for chunk in content:
-                                if chunk['type'] == 'text':
-                                    await msg.stream_token(chunk['text'])
-                                else:
-                                    print(chunk)
-                        else:
-                            await msg.stream_token(content)
-    else:
-        # simple conversation handling logic
-        async for chunk in runnable.astream(
-            [*memory.chat_memory.messages, HumanMessage(content=message.content)],
-            config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler(stream_final_answer=True)]),
-        ):
-            if chunk.content:
-                await msg.stream_token(chunk.content)
+    # try:
+    async for event in runnable.astream_events(
+        {"messages": [*memory.chat_memory.messages, HumanMessage(content=message.content)]},
+        config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler(stream_final_answer=True)]),
+        version="v1",
+    ):
+        kind = event["event"]
+        if kind == "on_tool_end":
+            await handle_tool_end(event, msg)
+        elif kind == "on_chat_model_stream":  # noqa
+            if event["metadata"]["langgraph_node"] in agent_names:
+                content = event["data"]["chunk"].content
+                if content:
+                    await msg.stream_token(content)
 
     await msg.send()
     memory.chat_memory.add_user_message(message.content)
@@ -175,11 +141,10 @@ async def handle_tool_end(event, msg):
         output = event["data"]["output"]
         transfer_dict = json.loads(output)
         token = transfer_dict["token"]
-        token_address = transfer_dict["token_address"]
         to_address = transfer_dict["to_address"]
         amount = transfer_dict["amount"]
 
-        url = f"/widget/transfer?token={token}&tokenAddress={token_address}&amount={amount}&toAddress={to_address}"
+        url = f"/widget/transfer?token={token}&amount={amount}&toAddress={to_address}"
 
         iframe_html = f"""
                 <iframe src="{url}" width="100%" height="600px" style="border:none;">
@@ -190,5 +155,5 @@ async def handle_tool_end(event, msg):
     if event["name"] == "PriceExecutor":
         output = event["data"]["output"]
         price_dict = json.loads(output)
-        widget = f"""<iframe src="/widget/price-chart?token={list(price_dict.keys())[0]}" height="400px"></iframe>"""  # noqa
+        widget = f"""<iframe src="/widget/price-chart?token={list(price_dict.keys())[0]}" height="400"></iframe>"""  # noqa
         await msg.stream_token(widget)

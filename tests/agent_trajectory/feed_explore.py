@@ -1,92 +1,134 @@
-import pytest
+import asyncio
+import unittest
+
 from langchain_core.messages import HumanMessage
-from loguru import logger
 
-from omniagent.agents.feed_explore import build_feed_explorer_agent
-from omniagent.conf.llm_provider import get_available_providers
-
-
-@pytest.fixture(scope="module")
-def feed_explorer_agent(request):
-    model = request.config.getoption("--model")
-    logger.info(f"using model: {model}")
-    llm = get_available_providers()[model]
-    agent = build_feed_explorer_agent(llm)
-    return agent
+from omniagent.agents.feed_explore import feed_explorer_agent
+from omniagent.conf.llm_provider import set_current_llm
 
 
-@pytest.mark.asyncio
-async def test_query_social_activities(feed_explorer_agent):
-    events = feed_explorer_agent.astream_events(
-        {"messages": [HumanMessage(content="What are the recent activities for vitalik.eth?", name="human")]}, version="v1"
-    )
+class TestFeedExploreAgent(unittest.TestCase):
+    def setUp(self):
+        set_current_llm("gpt-3.5-turbo")
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            event_data_input_ = event["data"]["input"]
-            assert event["name"] == "FeedExecutor"
-            assert "address" in event_data_input_
-            assert event_data_input_["address"] == "vitalik.eth"
-            assert "type" in event_data_input_
-            assert event_data_input_["type"] in ["all", "post", "comment", "share"]
+    def test_query_defi_activities(self):
+        """
+        Test querying recent DeFi activities for a specific Ethereum address.
+        Validates that the response contains the correct address and is handled by the 'DeFiExecutor'.
+        """
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+        async def async_test():
+            events = feed_explorer_agent.astream_events(
+                {
+                    "messages": [
+                        HumanMessage(content="Show me recent DeFi activities for address 0x742d35Cc6634C0532925a3b844Bc454e4438f44e", name="human")
+                    ]
+                },
+                version="v1",
+            )
 
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "DeFiExecutor")
+                    self.assertEqual(event_data_input_["address"], "0x742d35Cc6634C0532925a3b844Bc454e4438f44e")
+                    self.assertEqual(event_data_input_["activity_type"], "all")
 
-@pytest.mark.asyncio
-async def test_query_specific_activity_type(feed_explorer_agent):
-    events = feed_explorer_agent.astream_events(
-        {"messages": [HumanMessage(content="Show me recent posts from vitalik.eth", name="human")]},
-        version="v1",
-    )
+        asyncio.run(async_test())
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            event_data_input_ = event["data"]["input"]
-            assert event["name"] == "FeedExecutor"
-            assert event_data_input_["address"] == "vitalik.eth"
-            assert event_data_input_["type"] == "post"
+    def test_query_social_activities(self):
+        """
+        Test querying recent social activities for a specific ENS name (vitalik.eth).
+        Validates that the response contains the correct address and is handled by the 'FeedExecutor'.
+        """
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+        async def async_test():
+            events = feed_explorer_agent.astream_events(
+                {"messages": [HumanMessage(content="What are the recent activities for vitalik.eth?", name="human")]}, version="v1"
+            )
 
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "FeedExecutor")
+                    self.assertIn("address", event_data_input_)
+                    self.assertEqual(event_data_input_["address"], "vitalik.eth")
 
-@pytest.mark.asyncio
-async def test_query_telegram_news(feed_explorer_agent):
-    events = feed_explorer_agent.astream_events(
-        {"messages": [HumanMessage(content="Show me the latest crypto news", name="human")]},
-        version="v1",
-    )
+        asyncio.run(async_test())
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            assert event["name"] == "TelegramNewsExecutor"
+    def test_query_feed_source(self):
+        """
+        Test querying the latest activities for a specific ENS name (vitalik.eth) from a specific platform (Uniswap) on a specific network (Ethereum).
+        Validates that the response contains the correct platform, network, and address and is handled by the 'FeedSourceExecutor'.
+        """
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+        async def async_test():
+            events = feed_explorer_agent.astream_events(
+                {"messages": [HumanMessage(content="Show me the latest activities of vitalik.eth from Uniswap on Ethereum", name="human")]},
+                version="v1",
+            )
 
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertEqual(event["name"], "FeedSourceExecutor")
+                    self.assertIn("platform", event_data_input_)
+                    self.assertEqual(event_data_input_["platform"], "Uniswap")
+                    self.assertIn("network", event_data_input_)
+                    self.assertEqual(event_data_input_["network"], "ethereum")
+                    self.assertIn("address", event_data_input_)
+                    self.assertEqual(event_data_input_["address"], "vitalik.eth")
 
-@pytest.mark.asyncio
-async def test_query_limited_news(feed_explorer_agent):
-    events = feed_explorer_agent.astream_events(
-        {"messages": [HumanMessage(content="Get me the latest 5 news updates from crypto channels", name="human")]},
-        version="v1",
-    )
+        asyncio.run(async_test())
 
-    tool_end_count = 0
-    async for event in events:
-        if event["event"] == "on_tool_end":
-            tool_end_count += 1
-            assert event["name"] == "TelegramNewsExecutor"
-            event_data_input_ = event["data"]["input"]
-            assert event_data_input_["limit"] == 5
+    def test_query_unsupported_network(self):
+        """
+        Test querying activities on an unsupported network (XYZ).
+        Validates that the response indicates the network is unsupported and mentions the network name (XYZ).
+        """
 
-    assert tool_end_count > 0, "The on_tool_end event did not occur"
+        async def async_test():
+            events = feed_explorer_agent.astream_events(
+                {"messages": [HumanMessage(content="Show me activities on the XYZ network", name="human")]}, version="v1"
+            )
+
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    self.assertIn("output", event["data"])
+                    self.assertIn("Unsupported network", event["data"]["output"])
+                    self.assertIn("XYZ", event["data"]["output"])
+
+        asyncio.run(async_test())
+
+    def test_query_multiple_addresses(self):
+        """
+        Test querying and comparing activities for multiple addresses (vitalik.eth and a specific Ethereum address).
+        Validates that the response contains both addresses.
+        """
+
+        async def async_test():
+            events = feed_explorer_agent.astream_events(
+                {
+                    "messages": [
+                        HumanMessage(content="Compare activities of vitalik.eth and 0x742d35Cc6634C0532925a3b844Bc454e4438f44e", name="human")
+                    ]
+                },
+                version="v1",
+            )
+
+            addresses_checked = set()
+            async for event in events:
+                if event["event"] == "on_tool_end":
+                    event_data_input_ = event["data"]["input"]
+                    self.assertIn("address", event_data_input_)
+                    addresses_checked.add(event_data_input_["address"])
+
+            self.assertEqual(len(addresses_checked), 2)
+            self.assertIn("vitalik.eth", addresses_checked)
+            self.assertIn("0x742d35Cc6634C0532925a3b844Bc454e4438f44e", addresses_checked)
+
+        asyncio.run(async_test())
 
 
 if __name__ == "__main__":
-    pytest.main()
+    unittest.main()

@@ -1,27 +1,22 @@
+import json
 import os
-import vertexai
+
 from chainlit.utils import mount_chainlit
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
+from langchain_core.messages import HumanMessage
 from loguru import logger
+from pydantic import BaseModel
+from sse_starlette import EventSourceResponse
+from starlette import status
+from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
-import traceback
-from starlette.responses import JSONResponse
 
-from omniagent.conf.env import settings
-from omniagent.router import openai_router, widget_router, health_router
+from omniagent.workflows.workflow import build_workflow
 
 load_dotenv()
-app = FastAPI(
-    title="OmniAgent API",
-    description="OmniAgent is a framework for building AI applications leveraging the power of blockchains.",
-    license_info={
-        "name": "MIT",
-        "url": "https://github.com/vividgen/OmniAgent/blob/main/LICENSE",
-    },
-)
+app = FastAPI(title="OmniAgent", description="")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,10 +26,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add routers
-app.include_router(openai_router)
-app.include_router(widget_router)
-app.include_router(health_router)
+
+@app.get("/health", status_code=status.HTTP_200_OK, include_in_schema=False)
+async def health_check():
+    return JSONResponse(content={"status": "ok"})
+
+
+@app.get("/widget/swap", include_in_schema=False)
+async def swap_root():
+    return FileResponse(os.path.join("dist", "index.html"))
+
+
+@app.get("/widget/price-chart", include_in_schema=False)
+async def chart_price_root():
+    return FileResponse(os.path.join("dist", "index.html"))
+
+
+@app.get("/widget/transfer", include_in_schema=False)
+async def transfer_root():
+    return FileResponse(os.path.join("dist", "index.html"))
+
+
+class Input(BaseModel):
+    text: str
+
+
+@app.post("/api/stream_chat", description="streaming chat api for omniagent")
+async def outline_creation(req: Input):
+    agent = build_workflow()
+
+    async def stream():
+        async for event in agent.astream_events({"messages": [HumanMessage(content=req.text)]}, version="v1"):
+            kind = event["event"]
+            if kind == "on_chat_model_stream":
+                yield json.dumps(event["data"]["chunk"].dict(), ensure_ascii=False)
+
+    return EventSourceResponse(stream(), media_type="text/event-stream")
+
 
 # Check and create static files directory
 static_dir = os.path.join("dist", "static")
@@ -48,41 +76,3 @@ if not os.path.exists(static_dir):
 app.mount("/static", StaticFiles(directory=static_dir), name="widget")
 
 mount_chainlit(app=app, target="omniagent/ui/app.py", path="")
-
-if settings.VERTEX_PROJECT_ID:
-    vertexai.init(project=settings.VERTEX_PROJECT_ID)
-
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    error_msg = f"Global error: {str(exc)}\nTraceback:\n{traceback.format_exc()}"
-    logger.error(error_msg)
-    return JSONResponse(
-        status_code=500,
-        content={"error": str(exc), "traceback": traceback.format_exc()},
-    )
-
-
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-
-    openapi_schema = get_openapi(
-        title="OmniAgent API",
-        version="1.0.0",
-        description="OmniAgent API documentation",
-        routes=app.routes,
-    )
-
-    openapi_schema["servers"] = [
-        {
-            "url": "https://agent.open.network",
-            "description": "Production server"
-        }
-    ]
-
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-
-app.openapi = custom_openapi
