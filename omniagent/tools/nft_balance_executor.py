@@ -17,7 +17,7 @@ class ARGS(BaseModel):
     wallet_address: str = Field(description="wallet address")
 
 
-class NFTBalanceTool(BaseTool):
+class NFTBalanceExecutor(BaseTool):
     name = "NFTBalanceExecutor"
     description = "get the nft asset of a wallet."
     args_schema: Type[ARGS] = ARGS
