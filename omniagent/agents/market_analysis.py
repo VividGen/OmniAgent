@@ -2,19 +2,19 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.tools.coin_market_tool import CoinMarketTool
-from omniagent.tools.funding_rate_tool import FundingRateTool
-from omniagent.tools.nft_rank_tool import NFTRankingTool
-from omniagent.tools.nft_search_tool import NFTSearchTool
-from omniagent.tools.price_tool import PriceTool
-from omniagent.tools.tavily_tool import tavily_tool
+from omniagent.tools.coin_market_executor import CoinMarketExecutor
+from omniagent.tools.funding_rate_executor import FundingRateExecutor
+from omniagent.tools.nft_rank_executor import NFTRankingExecutor
+from omniagent.tools.nft_search_executor import NFTSearchExecutor
+from omniagent.tools.price_executor import PriceExecutor
+from omniagent.tools.tavily_executor import tavily_executor
 
 load_dotenv()
 llm = get_current_llm()
 
 market_analysis_agent = create_agent(
     llm,
-    [tavily_tool, PriceTool(), FundingRateTool(), NFTSearchTool(), NFTRankingTool(), CoinMarketTool()],
+    [tavily_executor, PriceExecutor(), FundingRateExecutor(), NFTSearchExecutor(), NFTRankingExecutor(), CoinMarketExecutor()],
     """
 You are MarketAnalyst, responsible for providing market data analysis.
 Help users understand market dynamics and trends by retrieving real-time price information of tokens.

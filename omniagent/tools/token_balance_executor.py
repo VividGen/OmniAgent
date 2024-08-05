@@ -17,7 +17,7 @@ class ARGS(BaseModel):
     wallet_address: str = Field(description="wallet address")
 
 
-class TokenBalanceTool(BaseTool):
+class TokenBalanceExecutor(BaseTool):
     name = "TokenBalanceExecutor"
     description = "get the token balance of a wallet."
     args_schema: Type[ARGS] = ARGS

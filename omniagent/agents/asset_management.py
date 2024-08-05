@@ -2,16 +2,16 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.experts.swap_expert import SwapExpert
-from omniagent.experts.transfer_expert import TransferExpert
-from omniagent.tools.nft_balance_tool import NFTBalanceTool
-from omniagent.tools.token_balance_tool import TokenBalanceTool
+from omniagent.tools.swap_executor import SwapExecutor
+from omniagent.tools.transfer_executor import TransferExecutor
+from omniagent.tools.nft_balance_executor import NFTBalanceExecutor
+from omniagent.tools.token_balance_executor import TokenBalanceExecutor
 
 load_dotenv()
 
 asset_management_agent = create_agent(
     get_current_llm(),
-    [TokenBalanceTool(), NFTBalanceTool(), SwapExpert(), TransferExpert()],
+    [TokenBalanceExecutor(), NFTBalanceExecutor(), SwapExecutor(), TransferExecutor()],
     """
 You are AssetManager, an AI assistant for crypto asset management. Your responsibilities include:
 

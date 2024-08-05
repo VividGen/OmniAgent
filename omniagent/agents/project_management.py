@@ -2,15 +2,15 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.tools.project_tool import ProjectTool
-from omniagent.tools.tavily_tool import tavily_tool
+from omniagent.tools.project_executor import ProjectExecutor
+from omniagent.tools.tavily_executor import tavily_executor
 
 load_dotenv()
 llm = get_current_llm()
 
 research_analyst_agent = create_agent(
     llm,
-    [ProjectTool(), tavily_tool],
+    [ProjectExecutor(), tavily_executor],
     """
 You are ResearchAnalyst, responsible for assisting users in conducting research and analysis related to web3 projects.
  Provide accurate and detailed information about project progress, team members, market trends, investors,
