@@ -2,9 +2,9 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.tools.defi_executor import DeFiExecutor
-from omniagent.tools.feed_executor import FeedExecutor
-from omniagent.tools.feed_source_executor import FeedSourceExecutor
+from omniagent.executors.defi_executor import DeFiExecutor
+from omniagent.executors.feed_executor import FeedExecutor
+from omniagent.executors.feed_source_executor import FeedSourceExecutor
 
 load_dotenv()
 

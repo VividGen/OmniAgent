@@ -2,12 +2,12 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.tools.coin_market_executor import CoinMarketExecutor
-from omniagent.tools.funding_rate_executor import FundingRateExecutor
-from omniagent.tools.nft_rank_executor import NFTRankingExecutor
-from omniagent.tools.nft_search_executor import NFTSearchExecutor
-from omniagent.tools.price_executor import PriceExecutor
-from omniagent.tools.tavily_executor import tavily_executor
+from omniagent.executors.coin_market_executor import CoinMarketExecutor
+from omniagent.executors.funding_rate_executor import FundingRateExecutor
+from omniagent.executors.nft_rank_executor import NFTRankingExecutor
+from omniagent.executors.nft_search_executor import NFTSearchExecutor
+from omniagent.executors.price_executor import PriceExecutor
+from omniagent.executors.tavily_executor import tavily_executor
 
 load_dotenv()
 llm = get_current_llm()

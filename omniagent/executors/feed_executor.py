@@ -10,7 +10,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from omniagent.conf.env import settings
-from omniagent.tools.feed_prompt import FEED_PROMPT
+from omniagent.executors.feed_prompt import FEED_PROMPT
 
 
 class ParamSchema(BaseModel):

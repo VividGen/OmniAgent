@@ -8,7 +8,7 @@ from langchain.callbacks.manager import (
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from omniagent.tools.token_util import chain_name_to_id, get_token_data_by_key, select_best_token
+from omniagent.executors.token_util import chain_name_to_id, get_token_data_by_key, select_best_token
 
 
 class Swap(BaseModel):
