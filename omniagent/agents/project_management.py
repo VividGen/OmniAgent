@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.tools.project_executor import ProjectExecutor
-from omniagent.tools.tavily_executor import tavily_executor
+from omniagent.executors.project_executor import ProjectExecutor
+from omniagent.executors.tavily_executor import tavily_executor
 
 load_dotenv()
 llm = get_current_llm()

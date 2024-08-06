@@ -22,7 +22,7 @@ class Swap(BaseModel):
     to_chain_name: str
 
 
-ChainLiteral = Literal["ETH", "BSC", "ARBITRUM", "OPTIMISM", "BASE"]
+ChainLiteral = Literal["ETH", "BSC", "ARBITRUM", "OPTIMISM", "POLYGON"]
 
 
 class ParamSchema(BaseModel):
@@ -34,11 +34,10 @@ class ParamSchema(BaseModel):
     to_token: str = Field(description="Symbol of the token to swap to, e.g., 'BTC', 'ETH', 'RSS3', 'USDT', 'USDC'. Default: 'ETH'.")
     from_chain: ChainLiteral = Field(
         default="ETH",
-        description="Blockchain network to swap from, support networks: 'ETH', 'BSC', 'ARBITRUM', 'OPTIMISM', 'BASE'. Default: 'ETH'.",
+        description="Blockchain network to swap from, support networks: 'ETH', 'BSC', 'ARBITRUM', 'OPTIMISM', 'POLYGON'. Default: 'ETH'.",
     )
     to_chain: ChainLiteral = Field(
-        default="ETH",
-        description="Blockchain network to swap to, support networks: 'ETH', 'BSC', 'ARBITRUM', 'OPTIMISM', 'BASE'. Default: 'ETH'.",
+        default="ETH", description="Blockchain network to swap to, support networks: 'ETH', 'BSC', 'ARBITRUM', 'OPTIMISM', 'POLYGON'. Default: 'ETH'."
     )
     amount: str = Field(description="Amount of the from-side token to swap, e.g., '0.1', '1', '10'. Default: '1'.")
 
@@ -49,7 +48,7 @@ class SwapExecutor(BaseTool):
     """
 
     name = "SwapExecutor"
-    description = "Use this tool to handle user requests to swap cryptocurrencies."
+    description = "Use this tool to generate a swap widget for the user to swap cryptocurrencies."
     args_schema: Type[ParamSchema] = ParamSchema
     return_direct = False
 

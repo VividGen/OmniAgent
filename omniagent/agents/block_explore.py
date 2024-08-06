@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.tools.block_stat_executor import BlockStatExecutor
-from omniagent.tools.tavily_executor import tavily_executor
+from omniagent.executors.block_stat_executor import BlockStatExecutor
+from omniagent.executors.tavily_executor import tavily_executor
 
 load_dotenv()
 

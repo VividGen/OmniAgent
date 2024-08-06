@@ -14,7 +14,7 @@ from omniagent.conf.env import settings
 
 
 class ARGS(BaseModel):
-    token: str = Field(description="token symbol, e.g., 'ETH', 'BTC'")
+    token: str = Field(description="token symbol")
 
 
 class PriceExecutor(BaseTool):

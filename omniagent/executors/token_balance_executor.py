@@ -1,25 +1,25 @@
 import json
 from typing import Optional, Type
 
+from covalent import CovalentClient
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
 )
 from langchain.tools import BaseTool
-from moralis import evm_api
 from pydantic import BaseModel, Field
 
 from omniagent.conf.env import settings
 
 
 class ARGS(BaseModel):
-    chain: str = Field(description="chain name,options:eth,optimism,arbitrum,bsc")
+    chain: str = Field(description="chain name,options:btc-mainnet,eth-mainnet,optimism-mainnet,arbitrum-mainnet,bsc-mainnet")
     wallet_address: str = Field(description="wallet address")
 
 
 class TokenBalanceExecutor(BaseTool):
     name = "TokenBalanceExecutor"
-    description = "get the token balance of a wallet address."
+    description = "get the token balance of a wallet."
     args_schema: Type[ARGS] = ARGS
 
     def _run(
@@ -40,26 +40,23 @@ class TokenBalanceExecutor(BaseTool):
 
 
 def fetch_balance(chain: str, address: str) -> str:
-    if settings.MORALIS_API_KEY is None:
-        return "Please set MORALIS_API_KEY in the environment"
-    result = evm_api.wallets.get_wallet_token_balances_price(
-        api_key=settings.MORALIS_API_KEY,
-        params={"chain": chain, "address": address},
-    )
-
+    c = CovalentClient(settings.COVALENT_API_KEY)
+    b = c.balance_service.get_token_balances_for_wallet_address(chain, address)
+    if b.error:
+        return b.error_message
     return json.dumps(
         list(
             map(
                 lambda x: {
-                    "symbol": x["symbol"],
-                    "balance_formatted": x["balance_formatted"],
-                    "usd_value": x["usd_value"],
+                    "contract_ticker_symbol": x.contract_ticker_symbol,
+                    "balance": x.balance,
+                    "pretty_quote": x.pretty_quote,
                 },
-                result["result"],
+                b.data.items,
             )
         )
     )
 
 
 if __name__ == "__main__":
-    print(fetch_balance("eth", "0x33c0814654fa367ce67d8531026eb4481290e63c"))
+    print(fetch_balance("eth-mainnet", "0x33c0814654fa367ce67d8531026eb4481290e63c"))
