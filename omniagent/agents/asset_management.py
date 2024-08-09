@@ -2,10 +2,10 @@ from dotenv import load_dotenv
 
 from omniagent.agents.agent_factory import create_agent
 from omniagent.conf.llm_provider import get_current_llm
-from omniagent.executors.swap_executor import SwapExecutor
-from omniagent.executors.transfer_executor import TransferExecutor
 from omniagent.executors.nft_balance_executor import NFTBalanceExecutor
+from omniagent.executors.swap_executor import SwapExecutor
 from omniagent.executors.token_balance_executor import TokenBalanceExecutor
+from omniagent.executors.transfer_executor import TransferExecutor
 
 load_dotenv()
 
