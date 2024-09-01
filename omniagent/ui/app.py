@@ -86,6 +86,7 @@ async def on_chat_start():
     provider_key = profile_name_to_provider_key(profile)
     set_current_llm(provider_key)
     setup_runnable()
+    await cl.Message(content=f"starting chat using the {profile} chat profile").send()
 
 
 def build_token(token_symbol: str, token_address: str):
@@ -149,10 +150,11 @@ async def handle_tool_end(event, msg):
         output = event["data"]["output"]
         transfer_dict = json.loads(output)
         token = transfer_dict["token"]
+        tokenAddress = transfer_dict["token_address"]
         to_address = transfer_dict["to_address"]
         amount = transfer_dict["amount"]
 
-        url = f"/widget/transfer?token={token}&amount={amount}&toAddress={to_address}"
+        url = f"/widget/transfer?token={token}&tokenAddress={tokenAddress}&amount={amount}&toAddress={to_address}"
 
         iframe_html = f"""
                 <iframe src="{url}" width="100%" height="600px" style="border:none;">
