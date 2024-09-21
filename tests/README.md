@@ -38,7 +38,7 @@ OmniAgent is an enterprise-grade AI orchestration framework that revolutionizes 
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│    Open Web     │ ─── Blockchain & Protocol Interaction
+│      Web3       │ ─── Blockchain & Protocol Interaction
 └─────────────────┘
 ```
 
@@ -48,12 +48,11 @@ OmniAgent is an enterprise-grade AI orchestration framework that revolutionizes 
 # Clone the repository
 git clone https://github.com/VividGen/OmniAgent.git
 
-# Install dependencies
-cd OmniAgent
-npm install
-
 # Configure environment
 cp .env.example .env
+
+# Start
+docker-compose up -d
 ```
 
 ## 📦 Quick Start
