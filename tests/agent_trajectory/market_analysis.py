@@ -1,5 +1,6 @@
 import pytest
 from langchain_core.messages import HumanMessage
+from loguru import logger
 
 from omniagent.agents.market_analysis import build_market_analysis_agent
 from omniagent.conf.llm_provider import get_available_providers
@@ -8,6 +9,8 @@ from omniagent.conf.llm_provider import get_available_providers
 @pytest.fixture(scope="module")
 def market_analysis_agent(request):
     model = request.config.getoption("--model")
+    logger.info(f"using model: {model}")
+
     llm = get_available_providers()[model]
     agent = build_market_analysis_agent(llm)
     return agent
