@@ -6,7 +6,6 @@ from omniagent.conf.env import settings
 from omniagent.executors.coin_market_executor import CoinMarketExecutor
 from omniagent.executors.funding_rate_executor import FundingRateExecutor
 from omniagent.executors.nft_rank_executor import NFTRankingExecutor
-from omniagent.executors.nft_search_executor import NFTSearchExecutor
 from omniagent.executors.price_executor import PriceExecutor
 from omniagent.executors.search_executor import search_executor
 
@@ -17,8 +16,8 @@ def build_market_analysis_agent(llm: BaseChatModel):
     executors = [FundingRateExecutor(), search_executor]
     if settings.COINGECKO_API_KEY:
         executors.extend([PriceExecutor(), CoinMarketExecutor()])
-    if settings.NFTSCAN_API_KEY:
-        executors.extend([NFTSearchExecutor(), NFTRankingExecutor()])
+    if settings.MORALIS_API_KEY:
+        executors.extend([NFTRankingExecutor()])
     return create_agent(
         llm,
         executors,
