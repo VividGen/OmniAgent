@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage
 from loguru import logger
 
 from omniagent.conf.env import settings
-from omniagent.conf.llm_provider import get_available_providers, SUPPORTED_MODELS
+from omniagent.conf.llm_provider import SUPPORTED_MODELS, get_available_providers
 from omniagent.ui.profile import profile_name_to_provider_key, provider_to_profile
 from omniagent.workflows.member import members
 from omniagent.workflows.workflow import build_workflow
