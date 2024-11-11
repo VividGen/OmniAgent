@@ -2,9 +2,7 @@ from dotenv import load_dotenv
 from langchain_core.language_models import BaseChatModel
 
 from omniagent.agents.agent_factory import create_agent
-from omniagent.executors.defi_executor import DeFiExecutor
 from omniagent.executors.feed_executor import FeedExecutor
-from omniagent.executors.feed_source_executor import FeedSourceExecutor
 from omniagent.executors.tg_news_executor import TelegramNewsExecutor
 
 load_dotenv()
