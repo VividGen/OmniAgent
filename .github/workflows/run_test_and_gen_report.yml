@@ -6,10 +6,6 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
 
-# Add permissions configuration
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -62,7 +58,6 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY }}
         OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
         # Optional API keys
         TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
@@ -81,31 +76,12 @@ jobs:
         cd tests
         poetry run python run_test.py
 
-    - name: Commit and push report
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Switch to docs branch
-        git fetch origin docs || git fetch origin main
-        git checkout docs || git checkout -b docs
-        
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        
-        # Check if file exists
-        ls -la tests/compatible-models.mdx || echo "Report file not found!"
-        
-        # Add all changes (including new files)
-        git add -A
-        
-        # Show pending changes
-        git status
-        
-        # Create commit with timestamp
-        git commit -m "docs: update compatibility test report" || echo "No changes to commit"
-        
-        # Push changes to docs branch
-        git push origin docs
+    - name: Commit test results
+      uses: mikepenz/action-github-comment@v2
+      with:
+        msg: "Test results"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        files: "allure-report"
 
 
 
