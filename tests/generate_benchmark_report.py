@@ -3,26 +3,23 @@ import sys
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
-from loguru import logger
 
 # Global model configurations
 PROPRIETARY_MODELS = [
     {"name": "gpt-4o-mini", "function_call_support": True},
     {"name": "gpt-4o", "function_call_support": True},
-    {"name": "gemini-1.5-flash", "function_call_support": True},
-    {"name": "gemini-1.5-pro", "function_call_support": True},
+    # {"name": "gemini-1.5-flash", "function_call_support": True},
+    # {"name": "gemini-1.5-pro", "function_call_support": True},
 ]
 
 OPENSOURCE_MODELS = [
-    {"name": "qwen2", "function_call_support": True},
-    {"name": "mistral", "function_call_support": True},
-    {"name": "qwen2.5", "function_call_support": True},
-    {"name": "llama3.1", "function_call_support": True},
-    {"name": "llama3.2", "function_call_support": True},
-    {"name": "mistral-nemo", "function_call_support": True},
+    # {"name": "qwen2", "function_call_support": True},
+    # {"name": "mistral", "function_call_support": True},
+    # {"name": "qwen2.5", "function_call_support": True},
+    # {"name": "llama3.1", "function_call_support": True},
+    # {"name": "llama3.2", "function_call_support": True},
+    # {"name": "mistral-nemo", "function_call_support": True},
 ]
-
-from gen_benchmark_html_report import measure_proprietary_models_metrics, measure_opensource_models_metrics
 
 
 class TestStats:
@@ -74,19 +71,18 @@ def generate_benchmark_report(proprietary_results, opensource_results):
     """Generate HTML benchmark report for model performance results.
 
     Args:
-        proprietary_results (dict): Results for proprietary models containing tuples of (score, first_token_latency, token_rate)
-        opensource_results (dict): Results for open source models containing tuples of (score, first_token_latency, token_rate)
+        proprietary_results (dict): Results for proprietary models containing tuples of (score, first_token_latency)
+        opensource_results (dict): Results for open source models containing tuples of (score, first_token_latency)
     """
     # Convert results format and sort by score
     proprietary_models = []
     for model in PROPRIETARY_MODELS:
         if model['name'] in proprietary_results:
-            score, latency, token_rate = proprietary_results[model['name']]
+            score, latency = proprietary_results[model['name']]
             proprietary_models.append({
                 'name': model['name'],
                 'score': score,
                 'first_token_latency': f"{latency:.2f}ms",
-                'token_rate': f"{token_rate:.1f} tokens/sec",
                 'function_call_support': bool_to_emoji(model['function_call_support'])
             })
     proprietary_models.sort(key=lambda x: x['score'], reverse=True)
@@ -94,12 +90,11 @@ def generate_benchmark_report(proprietary_results, opensource_results):
     open_source_models = []
     for model in OPENSOURCE_MODELS:
         if model['name'] in opensource_results:
-            score, latency, token_rate = opensource_results[model['name']]
+            score, latency = opensource_results[model['name']]
             open_source_models.append({
                 'name': model['name'],
                 'score': score,
                 'first_token_latency': f"{latency:.2f}ms",
-                'token_rate': f"{token_rate:.1f} tokens/sec",
                 'function_call_support': bool_to_emoji(model['function_call_support'])
             })
     open_source_models.sort(key=lambda x: x['score'], reverse=True)
@@ -127,18 +122,10 @@ def main():
     opensource_results = {}
 
     for model in PROPRIETARY_MODELS:
-        score = run_model_tests(model['name'])
-        latency, token_rate = measure_proprietary_models_metrics(model['name'])
-        logger.info(f"First token latency for {model['name']}: {latency:.2f}ms")
-        logger.info(f"Token output rate for {model['name']}: {token_rate:.1f} tokens/sec")
-        proprietary_results[model['name']] = (score, latency, token_rate)
+        proprietary_results[model['name']] = run_model_tests(model['name'])
 
     for model in OPENSOURCE_MODELS:
-        score = run_model_tests(model['name'])
-        latency, token_rate = measure_opensource_models_metrics(model['name'])
-        logger.info(f"First token latency for {model['name']}: {latency:.2f}ms")
-        logger.info(f"Token output rate for {model['name']}: {token_rate:.1f} tokens/sec")
-        opensource_results[model['name']] = (score, latency, token_rate)
+        opensource_results[model['name']] = run_model_tests(model['name'])
 
     generate_benchmark_report(proprietary_results, opensource_results)
     print("Benchmark report generated successfully at reports/benchmark.html")
