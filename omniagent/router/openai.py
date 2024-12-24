@@ -1,8 +1,7 @@
 import time
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 import traceback
-import json
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -13,47 +12,38 @@ from pydantic import BaseModel, Field
 from omniagent.conf.llm_provider import get_available_providers
 from omniagent.workflows.workflow import build_workflow
 
-router = APIRouter(tags=["Completion"])
-
-
-class ToolCall(BaseModel):
-    id: str = Field(default_factory=lambda: f"call_{str(uuid.uuid4())}")
-    type: str = "function"  # OpenAI currently only supports "function"
-    function: Dict[str, Any]
-
-
-class ChatFunctionCall(BaseModel):
-    name: str
-    arguments: str
+router = APIRouter(tags=["openai"])
 
 
 class ChatMessage(BaseModel):
     role: str = Field(example="user")
-    content: Optional[str] = Field(example="What's the current market situation for Bitcoin?")
+    content: str = Field(example="What's the current market situation for Bitcoin?")
     name: Optional[str] = Field(default=None, example=None)
-    tool_calls: Optional[List[ToolCall]] = None
-    function_call: Optional[ChatFunctionCall] = None
 
 
 class ChatCompletionRequest(BaseModel):
-    model: str = Field(example="llama3.2",description="The language model to use for the chat completion, e.g. 'qwen2', 'mistral', 'qwen2.5', 'llama3.1', 'llama3.2', 'mistral-nemo'")
+    model: str = Field(example="gpt-4o-mini")
     messages: List[ChatMessage] = Field(
         example=[
             {
+                "role": "system",
+                "content": "You are a helpful assistant."
+            },
+            {
                 "role": "user",
-                "content": "What's the current price of Ethereum and its market trend?"
+                "content": "What's the current market situation for Bitcoin?"
             }
         ]
     )
-    temperature: Optional[float] = Field(default=None, example=0.7)
-    top_p: Optional[float] = Field(default=None, example=1.0)
-    n: Optional[int] = Field(default=None, example=1)
+    temperature: Optional[float] = Field(default=1.0, example=0.7)
+    top_p: Optional[float] = Field(default=1.0, example=1.0)
+    n: Optional[int] = Field(default=1, example=1)
     stream: Optional[bool] = Field(default=False, example=False)
-    stop: Optional[List[str]] = Field(default=None, example=[])
+    stop: Optional[List[str]] = Field(default=None, example=None)
     max_tokens: Optional[int] = Field(default=None, example=None)
-    presence_penalty: Optional[float] = Field(default=None, example=0)
-    frequency_penalty: Optional[float] = Field(default=None, example=0)
-    user: Optional[str] = Field(default=None, example='oa')
+    presence_penalty: Optional[float] = Field(default=0, example=0)
+    frequency_penalty: Optional[float] = Field(default=0, example=0)
+    user: Optional[str] = Field(default=None, example=None)
 
 
 class ChatChoice(BaseModel):
@@ -80,7 +70,6 @@ class ChatCompletionResponse(BaseModel):
 class DeltaMessage(BaseModel):
     role: Optional[str] = None
     content: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None
 
 
 class StreamChoice(BaseModel):
@@ -101,8 +90,8 @@ class ChatCompletionStreamResponse(BaseModel):
     "/v1/chat/completions",
     summary="Create a chat completion",
     description="""Create a model response for the given chat conversation.
-    This endpoint is compatible with OpenAI's API and processes the chat through a workflow agent 
-    that can utilize various tools and capabilities to provide comprehensive responses.""",
+    The endpoint first processes the chat through a workflow agent that can utilize various tools
+    and capabilities to provide comprehensive responses.""",
     response_model=ChatCompletionResponse,
     responses={
         200: {
@@ -164,52 +153,42 @@ async def create_chat_completion(request: ChatCompletionRequest):
                 media_type='text/event-stream'
             )
 
+        # Get LLM instance
         llm = get_available_providers()[request.model]
+        # Build workflow agent
         agent = build_workflow(llm)
 
+        # Convert messages to a single text
         combined_message = "\n".join([f"{msg.role}: {msg.content}" for msg in request.messages])
 
-        tool_calls = []
+        # Generate response using agent
+        response = await agent.ainvoke({"messages": [HumanMessage(content=combined_message)]})
+
+        logger.debug(f"Agent response: {response}")  # Add debug log
+
+        # Extract the last assistant message from the response
         assistant_message = None
+        if isinstance(response, dict) and "messages" in response:
+            for msg in reversed(response["messages"]):
+                if isinstance(msg, HumanMessage) and msg.name:  # agent replies have a name
+                    assistant_message = msg.content
+                    break
 
-        async for event in agent.astream_events(
-                {"messages": [HumanMessage(content=combined_message)]},
-                version="v1"
-        ):
-            if event["event"] == "on_tool_end":
-                tool_name = event["name"]
-                tool_input = event["data"]["input"]
-
-                tool_call = ToolCall(
-                    function={
-                        "name": tool_name,
-                        "arguments": json.dumps(tool_input)
-                    }
-                )
-                tool_calls.append(tool_call)
-
-            elif event["event"] == "on_chat_model_stream":
-                if isinstance(event["data"]["chunk"].content, str):
-                    assistant_message = (assistant_message or "") + event["data"]["chunk"].content
-
-        if not assistant_message and not tool_calls:
-            raise ValueError("No response generated from the agent")
+        if not assistant_message:
+            logger.error(f"No assistant message found in response: {response}")
+            raise ValueError(f"No assistant message found in response: {response}")
 
         # Construct OpenAI format response
         choice = ChatChoice(
             index=0,
-            message=ChatMessage(
-                role="assistant",
-                content=assistant_message,
-                tool_calls=tool_calls if tool_calls else None
-            ),
+            message=ChatMessage(role="assistant", content=assistant_message),
             finish_reason="stop"
         )
 
         # Estimate token usage
         prompt_tokens = sum(len(msg.content.split()) * 1.3 for msg in request.messages)
-        completion_tokens = len(assistant_message.split()) * 1.3 if assistant_message else 0
-
+        completion_tokens = len(assistant_message.split()) * 1.3
+        
         usage = Usage(
             prompt_tokens=int(prompt_tokens),
             completion_tokens=int(completion_tokens),
@@ -236,7 +215,9 @@ async def create_chat_completion(request: ChatCompletionRequest):
 
 async def stream_chat_completion(request: ChatCompletionRequest):
     try:
+        # Get LLM instance
         llm = get_available_providers()[request.model]
+        # Build workflow agent
         agent = build_workflow(llm)
 
         # Send role information
@@ -244,13 +225,15 @@ async def stream_chat_completion(request: ChatCompletionRequest):
             model=request.model,
             choices=[StreamChoice(
                 index=0,
-                delta=DeltaMessage(role="assistant", content=""),
+                delta=DeltaMessage(role="assistant"),
             )]
         )
         yield f"data: {chunk.json()}\n\n"
 
+        # Convert messages to a single text
         combined_message = "\n".join([f"{msg.role}: {msg.content}" for msg in request.messages])
 
+        # Stream generation using agent
         async for event in agent.astream_events(
                 {"messages": [HumanMessage(content=combined_message)]},
                 version="v1"
@@ -266,29 +249,6 @@ async def stream_chat_completion(request: ChatCompletionRequest):
                         )]
                     )
                     yield f"data: {chunk.json()}\n\n"
-            elif event["event"] == "on_tool_end":
-                # Handle tool responses
-                tool_name = event["name"]
-                tool_input = event["data"]["input"]
-
-                # Create a tool call response
-                tool_call = ToolCall(
-                    function={
-                        "name": tool_name,
-                        "arguments": json.dumps(tool_input)
-                    }
-                )
-
-                chunk = ChatCompletionStreamResponse(
-                    model=request.model,
-                    choices=[StreamChoice(
-                        index=0,
-                        delta=DeltaMessage(
-                            tool_calls=[tool_call]
-                        ),
-                    )]
-                )
-                yield f"data: {chunk.json()}\n\n"
 
         # Send end markers
         chunk = ChatCompletionStreamResponse(
